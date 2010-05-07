@@ -2,7 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-// #define DEBUG 1
+// #define DEBUG
+
+#ifdef DEBUG
+	#define DPRINT(format, ...) fprintf(stderr, format, ## __VA_ARGS__)
+#else
+	#define DPRINT(...) ((void)0)
+#endif
 
 typedef struct {
     char * name;
@@ -20,11 +26,13 @@ typedef struct pe_sequence_t pe_sequence;
 
 char * readline(FILE * fh) {
     #define LINE_LEN 255
-    char * str = (char *)malloc(LINE_LEN);
-    fgets(str, LINE_LEN, fh);
-    if (str[strlen(str) - 1] == '\n') {
-        str[strlen(str) - 1] = '\0';
+    char line[LINE_LEN] = "\0";
+    fgets(line, LINE_LEN, fh);
+    if (line[strlen(line) - 1] == '\n') {
+        line[strlen(line) - 1] = '\0';
     }
+	char * str = (char *)malloc(strlen(line) + 1);
+	memmove(str, line, strlen(line));
     return str;
 }
 
@@ -65,6 +73,13 @@ void lazysearch(const char * name,
     }
 }
 
+void set_seq(sequence ** target, const sequence * source) {
+	(*target) = (sequence *)malloc(sizeof(sequence));
+	(*target)->name    = strdup(source->name);
+	(*target)->seq     = strdup(source->seq);
+	(*target)->quality = strdup(source->quality);
+}
+
 pe_sequence * load_fastq(const char * filename) {
     pe_sequence * root = llalloc(1);
     pe_sequence * curritem = root;
@@ -74,42 +89,36 @@ pe_sequence * load_fastq(const char * filename) {
 		printf("File %s cannot be read. Aborting.\n", filename);
 		exit(1);
 	}
-#ifdef DEBUG
-    fprintf(stderr, "Reading FASTQ file\n");
-#endif
+	DPRINT("Reading FASTQ file\n");
     do {
-        char * name = readline(fh);
-        char * seqstr = readline(fh);
-        readline(fh);
-        char * quality = readline(fh);
-        sequence * seq = (sequence *)malloc(sizeof(sequence));
         pe_sequence * pair;
-        name++;
-        if (strlen(name) == 0) {
-            break;
+		sequence seq;
+        seq.name = readline(fh);
+        seq.seq = readline(fh);
+		char * tmp = readline(fh); free(tmp);
+        seq.quality = readline(fh);
+        if (strlen(seq.name) == 0) {
+            continue;
         }
+		memmove(seq.name, seq.name + 1, strlen(seq.name));
         pair = llalloc(0);
-        seq->name = strdup(name);
-        seq->seq  = strdup(seqstr);
-        seq->quality = strdup(quality);
-#ifdef DEBUG
-        fprintf(stderr, "Got seq %s\n", seq->name);
-#endif
-        if (is_forward(seq)) {
-            pair->forward = seq;
+        DPRINT("Seq [%s %s %s]\n", seq.name, seq.seq, seq.quality);
+        if (is_forward(&seq)) {
+			DPRINT("  Forward\n");
+            set_seq(&(pair->forward), &seq);
             llinsert(pair, curritem);
             curritem = curritem->next;
         } else {
-            lazysearch(seq->name, &match, root);
+			DPRINT("  Reverse\n");
+            lazysearch(seq.name, &match, root);
             if (match != NULL) {
-                match->reverse = seq;
+				DPRINT("Found match: %s\n", match->forward->name);
+                set_seq(&(match->reverse), &seq);
             }
         }
     } while (!feof(fh));
     fclose(fh);
-#ifdef DEBUG
-    fprintf(stderr, "Finished reading FASTQ\n");
-#endif
+	DPRINT("Finished reading FASTQ\n");
     return root;
 }
 
