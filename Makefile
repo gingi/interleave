@@ -9,3 +9,8 @@ clean:
 
 install:
 	cp fastqinterleave $(EXECDIR)
+	
+test: fastqinterleave
+	./fastqinterleave test.fastq tmp.fastq
+	diff tmp.fastq expected.fastq
+	rm tmp.fastq
