@@ -3,30 +3,26 @@
 #include <string.h>
 #include "zlib.h"
 
-// #define DEBUG
+#define LINE_LEN 255
 
 #ifdef DEBUG
-    #define DPRINT(format, ...) fprintf(stderr, format, ## __VA_ARGS__)
+    #define dprint(format, ...) fprintf(stderr, format, ## __VA_ARGS__)
 #else
-    #define DPRINT(...) ((void)0)
+    #define dprint(...) ((void)0)
 #endif
 
 typedef struct {
-    char * name;
-    char * seq;
-    char * quality;
+    char name[LINE_LEN];
+    char seq[LINE_LEN];
+    char quality[LINE_LEN];
 } sequence;
 
-char * readline(FILE * fh) {
-    #define LINE_LEN 255
-    char line[LINE_LEN] = "\0";
-    fgets(line, LINE_LEN, fh);
-    if (line[strlen(line) - 1] == '\n') {
-        line[strlen(line) - 1] = '\0';
+void readline(FILE * fh, char * str) {
+    fgets(str, LINE_LEN, fh);
+    if (str[strlen(str) - 1] == '\n') {
+        str[strlen(str) - 1] = '\0';
     }
-    char * str = (char *)malloc(strlen(line) + 1);
-    memmove(str, line, strlen(line));
-    return str;
+    dprint("      R[%s]\n", str);
 }
 
 int is_forward(sequence * seq) {
@@ -40,32 +36,34 @@ int is_pair(const sequence * forward, const sequence * reverse) {
         memcmp(forward->name, reverse->name, strlen(forward->name) - 1) == 0;
 }
 
-sequence * readseq(FILE * fh) {
-    DPRINT("Reading next seq...\n");
-    sequence * seq = (sequence *)malloc(sizeof(sequence));
-    char * name = readline(fh);
-    if (strlen(name) == 0) {
-        return NULL;
+void initseq(sequence * seq) {
+    seq->name[0] = '\0';
+    seq->seq[0] = '\0';
+    seq->quality[0] = '\0';
+}
+
+void readseq(FILE * fh, sequence * seq) {
+    initseq(seq);
+    readline(fh, seq->name);
+    if (strlen(seq->name) == 0) {
+        return;
     }
-    seq->name = (char *)malloc(strlen(name));
-    memmove(seq->name, name + 1, strlen(name));
-    seq->seq     = readline(fh);
-    readline(fh);
-    seq->quality = readline(fh);
-    return seq;    
+    memmove(seq->name, seq->name + 1, strlen(seq->name) - 1);
+    seq->name[strlen(seq->name) - 1] = '\0';
+    readline(fh, seq->seq);
+    char tmp[LINE_LEN];
+    readline(fh, tmp);
+    readline(fh, seq->quality);
 }
 
 void seekreverse(FILE * fh) {
-    sequence * seq;
+    sequence seq;
     long prevpos;
     do {
         prevpos = ftell(fh);
-        DPRINT("BEFORE READ: %ld\n", prevpos);
-        seq = readseq(fh);
-    } while (!feof(fh) && is_forward(seq));
-    if (seq != NULL) {
-        fseek(fh, prevpos, SEEK_SET);
-    }
+        readseq(fh, &seq);
+    } while (!feof(fh) && is_forward(&seq));
+    fseek(fh, prevpos, SEEK_SET);
 }
 
 void printseq(FILE * fh, sequence * seq) {
@@ -90,24 +88,26 @@ void fastqinterleave(const char * infile, const char * outfile) {
         exit(1);
     }
     seekreverse(rfh); // Advance to position of first REVERSE mate
-    DPRINT("FORWARD FH: %ld REVERSE FH: %ld\n", ftell(ffh), ftell(rfh));
-    DPRINT("Reading FASTQ file\n");
+    dprint("Forward FH: %ld Reverse FH: %ld\n", ftell(ffh), ftell(rfh));
+    dprint("Reading FASTQ file\n");
     do {
-        sequence * forward = readseq(ffh);
-        sequence * reverse = readseq(rfh);
-        if (forward == NULL || reverse == NULL) {
-            DPRINT("Either forward or reverse is null. Just skipping.\n");
+        sequence forward; 
+        sequence reverse;
+        readseq(ffh, &forward);
+        readseq(rfh, &reverse);
+        if (strlen(forward.name) == 0 || strlen(reverse.name) == 0) {
+            dprint("Either forward or reverse is null. Just skipping.\n");
             continue;
         }
-        if (!is_pair(forward, reverse)) {
-            fprintf(stderr, "Mismatch of forward (%s) and reverse  (%s) pairs. Aborting.\n", forward->name, reverse->name);
+        if (!is_pair(&forward, &reverse)) {
+            fprintf(stderr, "Mismatch of forward (%s) and reverse (%s) pairs. Aborting.\n", forward.name, reverse.name);
             exit(2);
         }
-        DPRINT("FORWARD [%s] REVERSE [%s]\n", forward->name, reverse->name);
-        printseq(out, forward);
-        printseq(out, reverse);
+        dprint("Forward: [%s] Reverse: [%s]\n", forward.name, reverse.name);
+        printseq(out, &forward);
+        printseq(out, &reverse);
     } while (!feof(rfh));
-    DPRINT("Finished reading FASTQ\n");
+    dprint("Finished reading FASTQ\n");
     fclose(ffh);
     fclose(rfh);
     fclose(out);
