@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "zlib.h"
 
 // #define DEBUG
 
@@ -16,14 +17,6 @@ typedef struct {
     char * quality;
 } sequence;
 
-struct pe_sequence_t {
-    struct pe_sequence_t * next;
-    sequence * forward;
-    sequence * reverse;
-};
-
-typedef struct pe_sequence_t pe_sequence;
-
 char * readline(FILE * fh) {
     #define LINE_LEN 255
     char line[LINE_LEN] = "\0";
@@ -36,90 +29,43 @@ char * readline(FILE * fh) {
     return str;
 }
 
-pe_sequence * llalloc(int initnext) {
-    pe_sequence * seq = (pe_sequence *)malloc(sizeof(pe_sequence));
-    if (initnext) {
-        seq->next = (pe_sequence *)malloc(sizeof(pe_sequence));
-    }
-    return seq;
-}
-
-void llinsert(pe_sequence * seq, pe_sequence * target) {
-    pe_sequence * rest = target->next;
-    seq->next = rest;
-    target->next = seq;
-}
-
 int is_forward(sequence * seq) {
     #define FORWARD '1'
     #define REVERSE '2'
     return seq->name[strlen(seq->name) - 1] == FORWARD;
 }
 
-int found_pair(const char * name, const pe_sequence * pair) {
-    return memcmp(name, pair->forward->name, strlen(name) - 1) == 0;
+int is_pair(const sequence * forward, const sequence * reverse) {
+    return
+        memcmp(forward->name, reverse->name, strlen(forward->name) - 1) == 0;
 }
 
-void lazysearch(const char * name,
-                pe_sequence ** match, 
-                pe_sequence * root) {
-    if ((*match)->next != NULL && found_pair(name, (*match)->next)) {
-        (*match) = (*match)->next;
-    } else {
-        (*match) = root;
-        while ((*match)->next != NULL && !found_pair(name, (*match)->next)) {
-            (*match) = (*match)->next;
-        }
+sequence * readseq(FILE * fh) {
+    DPRINT("Reading next seq...\n");
+    sequence * seq = (sequence *)malloc(sizeof(sequence));
+    char * name = readline(fh);
+    if (strlen(name) == 0) {
+        return NULL;
     }
+    seq->name = (char *)malloc(strlen(name));
+    memmove(seq->name, name + 1, strlen(name));
+    seq->seq     = readline(fh);
+    readline(fh);
+    seq->quality = readline(fh);
+    return seq;    
 }
 
-void set_seq(sequence ** target, const sequence * source) {
-    (*target) = (sequence *)malloc(sizeof(sequence));
-    (*target)->name    = strdup(source->name);
-    (*target)->seq     = strdup(source->seq);
-    (*target)->quality = strdup(source->quality);
-}
-
-pe_sequence * load_fastq(const char * filename) {
-    pe_sequence * root = llalloc(1);
-    pe_sequence * curritem = root;
-    pe_sequence * match = root;
-    FILE * fh = fopen(filename, "r");
-    if (fh == NULL) {
-        printf("File %s cannot be read. Aborting.\n", filename);
-        exit(1);
-    }
-    DPRINT("Reading FASTQ file\n");
+void seekreverse(FILE * fh) {
+    sequence * seq;
+    long prevpos;
     do {
-        pe_sequence * pair;
-        sequence seq;
-        seq.name = readline(fh);
-        seq.seq = readline(fh);
-        char * tmp = readline(fh); free(tmp);
-        seq.quality = readline(fh);
-        if (strlen(seq.name) == 0) {
-            continue;
-        }
-        memmove(seq.name, seq.name + 1, strlen(seq.name));
-        pair = llalloc(0);
-        DPRINT("Seq [%s %s %s]\n", seq.name, seq.seq, seq.quality);
-        if (is_forward(&seq)) {
-            DPRINT("  Forward\n");
-            set_seq(&(pair->forward), &seq);
-            llinsert(pair, curritem);
-            curritem = curritem->next;
-        } else {
-            DPRINT("  Reverse\n");
-            lazysearch(seq.name, &match, root);
-            if (match != NULL) {
-                DPRINT("Found match: %s\n", match->forward->name);
-                set_seq(&(match->reverse), &seq);
-            }
-        }
-    } while (!feof(fh));
-    fclose(fh);
-    DPRINT("Finished reading FASTQ\n");
-    return root;
+        prevpos = ftell(fh);
+        DPRINT("BEFORE READ: %ld\n", prevpos);
+        seq = readseq(fh);
+    } while (!feof(fh) && is_forward(seq));
+    if (seq != NULL) {
+        fseek(fh, prevpos, SEEK_SET);
+    }
 }
 
 void printseq(FILE * fh, sequence * seq) {
@@ -131,29 +77,48 @@ void printseq(FILE * fh, sequence * seq) {
     );
 }
 
-void save_fastq(const char * filename, const pe_sequence * fastq) {
-    pe_sequence * item = fastq->next;
-    FILE * out = fopen(filename, "w");
-    if (out == NULL) {
-        printf("Cannot write to file %s\n", filename);
+void fastqinterleave(const char * infile, const char * outfile) {
+    FILE * ffh = fopen(infile, "r");
+    FILE * rfh = fopen(infile, "r");
+    if (ffh == NULL || rfh == NULL) {
+        fprintf(stderr, "File %s cannot be read. Aborting.\n", infile);
         exit(1);
     }
-    while (item->next != NULL) {
-        printseq(out, item->forward);
-        printseq(out, item->reverse);
-        item = item->next;
+    FILE * out = fopen(outfile, "w");
+    if (out == NULL) {
+        fprintf(stderr, "File %s cannot be written. Aborting.\n", outfile);
+        exit(1);
     }
+    seekreverse(rfh); // Advance to position of first REVERSE mate
+    DPRINT("FORWARD FH: %ld REVERSE FH: %ld\n", ftell(ffh), ftell(rfh));
+    DPRINT("Reading FASTQ file\n");
+    do {
+        sequence * forward = readseq(ffh);
+        sequence * reverse = readseq(rfh);
+        if (forward == NULL || reverse == NULL) {
+            DPRINT("Either forward or reverse is null. Just skipping.\n");
+            continue;
+        }
+        if (!is_pair(forward, reverse)) {
+            fprintf(stderr, "Mismatch of forward (%s) and reverse  (%s) pairs. Aborting.\n", forward->name, reverse->name);
+            exit(2);
+        }
+        DPRINT("FORWARD [%s] REVERSE [%s]\n", forward->name, reverse->name);
+        printseq(out, forward);
+        printseq(out, reverse);
+    } while (!feof(rfh));
+    DPRINT("Finished reading FASTQ\n");
+    fclose(ffh);
+    fclose(rfh);
     fclose(out);
 }
 
 int main (int argc, char const *argv[]) {
-    pe_sequence * fastq;
     if (argc < 3) {
         printf("Usage: fastqinterleave <input.fastq> <output.fastq>\n");
         exit(0);
     }
-    fastq = load_fastq(argv[1]);
-    save_fastq(argv[2], fastq);
+    fastqinterleave(argv[1], argv[2]);
     return 0;
 }
 
