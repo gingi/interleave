@@ -17,6 +17,7 @@ test: interleave
 	rm tmp.txt
 	./interleave -l 1 -o tmp.txt test/{a,b,c}.txt
 	diff -u tmp.txt test/expected.3way.txt
+	rm tmp.txt
 	
 debug: clean
 	$(MAKE) $(MAKEFILE) CFLAGS="$(CFLAGS) -g -D DEBUG"
