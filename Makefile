@@ -12,9 +12,9 @@ install:
 	cp fastqinterleave $(EXECDIR)
 	
 test: fastqinterleave
-	./fastqinterleave test.fastq tmp.fastq
-	diff tmp.fastq expected.fastq
-	rm tmp.fastq
+	./fastqinterleave -l 4 -o tmp.txt test_left.txt test_right.txt
+	diff tmp.txt expected.fastq
+	rm tmp.txt
 	
 debug: clean
 	$(MAKE) $(MAKEFILE) CFLAGS="$(CFLAGS) -g -D DEBUG"
