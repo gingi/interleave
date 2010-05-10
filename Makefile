@@ -1,18 +1,18 @@
 CC=gcc 
 CFLAGS=-Wall
 EXECDIR=$(HOME)/bin
-OBJS=fastqinterleave.o
+OBJS=interleave.o
 
-fastqinterleave: $(OBJS)
+interleave: $(OBJS)
 
 clean:
-	rm -f fastqinterleave{,.o}
+	rm -f interleave $(OBJS)
 
 install:
-	cp fastqinterleave $(EXECDIR)
+	cp interleave $(EXECDIR)
 	
-test: fastqinterleave
-	./fastqinterleave -l 4 -o tmp.txt test_left.txt test_right.txt
+test: interleave
+	./interleave -l 4 -o tmp.txt test_left.txt test_right.txt
 	diff tmp.txt expected.fastq
 	rm tmp.txt
 	
