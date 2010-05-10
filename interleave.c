@@ -101,6 +101,7 @@ void fclose_arr(FILE * files[], int num) {
 int feof_arr(FILE * files[], int num) {
     int i;
     for (i = 0; i < num; i++) {
+        dprint("feof(%d) = %s\n", i, feof(files[i]) ? "yes" : "no");
         if (feof(files[i])) {
             return 1;
         }
@@ -118,19 +119,27 @@ void interleave(int nfiles, const char * files[], int lines) {
         perr("File %s cannot be written. Aborting.\n", outputfile);
         exit(1);
     }
-    do {
+    while (!feof_arr(in, nfiles)) {
         int i, j;
         char line[LINE_LEN];
         for (i = 0; i < nfiles; i++) {
             for (j = 0; j < lines; j++) {
-                fgets(line, LINE_LEN, in[i]);
+                char * result = fgets(line, LINE_LEN, in[i]);
+                if (result == NULL) {
+                    int err;
+                    if ((err = ferror(in[i])) != 0) {
+                        perr("Error %d reading file %s.\n", err, files[i]);
+                        exit(2);
+                    }
+                    break;
+                }
                 if (line[strlen(line) - 1] != '\n') {
                     strcat(line, "\n");
                 }
                 fputs(line, out);
             }
         }
-    } while (!feof_arr(in, nfiles));
+    }
     fclose_arr(in, nfiles);
     fclose(out);
 }
