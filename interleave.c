@@ -14,71 +14,9 @@
 #define perr(format, ...) fprintf(stderr, format, ## __VA_ARGS__)
 
 #define DEFAULT_LINES 4
+
 int lines = DEFAULT_LINES;
 char * outputfile;
-
-typedef struct {
-    char name[LINE_LEN];
-    char seq[LINE_LEN];
-    char quality[LINE_LEN];
-} sequence;
-
-void readline(FILE * fh, char * str) {
-    fgets(str, LINE_LEN, fh);
-    if (str[strlen(str) - 1] == '\n') {
-        str[strlen(str) - 1] = '\0';
-    }
-}
-
-int is_forward(sequence * seq) {
-    #define FORWARD '1'
-    #define REVERSE '2'
-    return seq->name[strlen(seq->name) - 1] == FORWARD;
-}
-
-int is_pair(const sequence * forward, const sequence * reverse) {
-    return
-        memcmp(forward->name, reverse->name, strlen(forward->name) - 1) == 0;
-}
-
-void initseq(sequence * seq) {
-    seq->name[0] = '\0';
-    seq->seq[0] = '\0';
-    seq->quality[0] = '\0';
-}
-
-void readseq(FILE * fh, sequence * seq) {
-    initseq(seq);
-    readline(fh, seq->name);
-    if (strlen(seq->name) == 0) {
-        return;
-    }
-    memmove(seq->name, seq->name + 1, strlen(seq->name) - 1);
-    seq->name[strlen(seq->name) - 1] = '\0';
-    readline(fh, seq->seq);
-    char tmp[LINE_LEN];
-    readline(fh, tmp);
-    readline(fh, seq->quality);
-}
-
-void seekreverse(FILE * fh) {
-    sequence seq;
-    long prevpos;
-    do {
-        prevpos = ftell(fh);
-        readseq(fh, &seq);
-    } while (!feof(fh) && is_forward(&seq));
-    fseek(fh, prevpos, SEEK_SET);
-}
-
-void printseq(FILE * fh, sequence * seq) {
-    fprintf(fh, "@%s\n%s\n+%s\n%s\n",
-        seq->name,
-        seq->seq,
-        seq->name,
-        seq->quality
-    );
-}
 
 void fopen_arr(FILE * files[], const char * filenames[], int num) {
     int i;
@@ -173,4 +111,3 @@ int main (int argc, char const *argv[]) {
     interleave(argc, argv, lines);
     return 0;
 }
-
