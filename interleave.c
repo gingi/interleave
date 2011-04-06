@@ -3,7 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#define LINE_LEN 255
+#define LINE_LEN 1024
 
 #ifdef DEBUG
     #define dprint(format, ...) fprintf(stderr, format, ## __VA_ARGS__)
