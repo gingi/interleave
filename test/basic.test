@@ -1,0 +1,28 @@
+#!/bin/sh
+
+echo 1..2
+
+bindir=..
+outfile=tmp.$$.txt
+testnum=1
+
+function diff_equal {
+    fixture="$1"
+    message="$2"
+    if [ -z "$(diff $outfile $fixture)" ]; then
+        echo "ok $testnum - $message"
+    else
+        echo "not ok $testnum - $message"
+    fi
+    testnum=$(($testnum + 1))
+}
+
+# Test 1: 2 files, 1 line
+$bindir/interleave -l 4 -o $outfile left.txt right.txt
+diff_equal expected.2way.txt "files:2 lines:4"
+
+# Test 2: 3 files, 1 line
+$bindir/interleave -l 1 -o $outfile a.txt b.txt c.txt
+diff_equal expected.3way.txt "files:3 lines:1"
+
+rm $outfile

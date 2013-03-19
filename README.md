@@ -3,6 +3,16 @@ Interleaves huge files together. Useful for combining mate-pair FASTQ files.
 
 ##Usage
 
+`interleave` takes as input 2 or more text files. An output file must be specified with the `-o` option.
+
+    interleave [args] <file1> <file2> ...
+    
+    args:
+       -l [num]   - Lines from each file to interleave (default: 4)
+       -o [file]  - File to output
+
+##Example
+
     > cat left-file.txt
     A
     B
@@ -20,8 +30,9 @@ Interleaves huge files together. Useful for combining mate-pair FASTQ files.
 
     ./configure
     make
+    make check
     make install
-    
+
 ## License
 
     Copyright (c) 2012-2013 Shiran Pasternak <shiranpasternak at gmail.com>
