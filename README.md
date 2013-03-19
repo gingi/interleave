@@ -1,4 +1,7 @@
 #Interleave
+
+[![Build Status](https://travis-ci.org/gingi/interleave.png)](https://travis-ci.org/gingi/interleave)
+
 Interleaves huge files together. Useful for combining mate-pair FASTQ files.
 
 ##Usage
