@@ -3,7 +3,7 @@ Interleaves huge files together. Useful for combining mate-pair FASTQ files.
 
 ##Usage
 
-`interleave` takes as input 2 or more text files. An output file must be specified with the `-o` option.
+`interleave` takes as input 2 or more text files, and outputs to a file specified with the `-o` option (or standard output).
 
     interleave [args] <file1> <file2> ...
     

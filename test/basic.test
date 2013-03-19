@@ -1,6 +1,6 @@
 #!/bin/sh
 
-echo 1..2
+echo 1..3
 
 bindir=..
 outfile=tmp.$$.txt
@@ -24,5 +24,9 @@ diff_equal expected.2way.txt "files:2 lines:4"
 # Test 2: 3 files, 1 line
 $bindir/interleave -l 1 -o $outfile a.txt b.txt c.txt
 diff_equal expected.3way.txt "files:3 lines:1"
+
+# Test 3: standard output
+$bindir/interleave left.txt right.txt > $outfile
+diff_equal expected.2way.txt "standard output"
 
 rm $outfile

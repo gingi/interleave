@@ -52,7 +52,12 @@ void interleave(int nfiles, const char * files[], int lines) {
     dprint("Interleaving every %d lines\n", lines);
     FILE * in[nfiles];
     fopen_arr(in, files, nfiles);
-    FILE * out = fopen(outputfile, "w");
+    FILE * out;
+    if (outputfile == NULL) {
+        out = stdout;
+    } else {
+        out = fopen(outputfile, "w");
+    }
     if (out == NULL) {
         perr("File %s cannot be written. Aborting.\n", outputfile);
         exit(1);
