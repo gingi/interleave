@@ -9,6 +9,7 @@ AC_CONFIG_AUX_DIR([test])
 AC_REQUIRE_AUX_FILE([tap-driver.sh])
 
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
+AM_MAINTAINER_MODE([disable])
 
 # Checks for programs.
 AC_PROG_CC
