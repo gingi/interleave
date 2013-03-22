@@ -14,7 +14,57 @@ Interleaves huge files together. Useful for combining mate-pair FASTQ files.
        -l [num]   - Lines from each file to interleave (default: 4)
        -o [file]  - File to output
 
-##Example
+##Installation
+
+    ./configure
+    make
+    make check
+    make install
+
+##Examples
+
+Interleave 2 FASTQ mate-pair files:
+
+    > cat FC42GXXXXXX_1.fastq
+    @ROVE_0001:7:1:6:1934#0/1
+    ATCGTCGATAGATCGGAAGAGCGGTTCAGCAGGAAT
+    +ROVE_0001:7:1:6:1934#0/1
+    gggfggggggggggggggggeggggggggcggchgg
+    @ROVE_0001:7:1:6:54#0/1
+    ATCGTCGATAGATCGGAAGAGCGGTTCAGCAGGAAT
+    +ROVE_0001:7:1:6:54#0/1
+    gggggggggggghggf`gggggggffgcfgggggge
+    
+    > cat FC42GXXXXXX_2.fastq
+    @ROVE_0001:7:1:6:1934#0/2
+    ATCGACGATAGATCGGAAGAGCGTCGTGTANGGAAA
+    +ROVE_0001:7:1:6:1934#0/2
+    ggeegedggggggggfgeggfgfggdbdbdEdTdb`
+    @ROVE_0001:7:1:6:54#0/2
+    ATCGACGATAGATCGGAAGAGCGTCGTGTANGGAAA
+    +ROVE_0001:7:1:6:54#0/2
+    gggggggcgggggggggggggggggggggcEffee^
+    
+    > ./interleave FC42GXXXXXX_1.fastq FC42GXXXXXX_2.fastq
+    @ROVE_0001:7:1:6:1934#0/1
+    ATCGTCGATAGATCGGAAGAGCGGTTCAGCAGGAAT
+    +ROVE_0001:7:1:6:1934#0/1
+    gggfggggggggggggggggeggggggggcggchgg
+    @ROVE_0001:7:1:6:1934#0/2
+    ATCGACGATAGATCGGAAGAGCGTCGTGTANGGAAA
+    +ROVE_0001:7:1:6:1934#0/2
+    ggeegedggggggggfgeggfgfggdbdbdEdTdb`
+    @ROVE_0001:7:1:6:54#0/1
+    ATCGTCGATAGATCGGAAGAGCGGTTCAGCAGGAAT
+    +ROVE_0001:7:1:6:54#0/1
+    gggggggggggghggf`gggggggffgcfgggggge
+    @ROVE_0001:7:1:6:54#0/2
+    ATCGACGATAGATCGGAAGAGCGTCGTGTANGGAAA
+    +ROVE_0001:7:1:6:54#0/2
+    gggggggcgggggggggggggggggggggcEffee^
+    
+
+Interleave 2 text files, taking one line from each at a time.
 
     > cat left-file.txt
     A
@@ -29,12 +79,7 @@ Interleaves huge files together. Useful for combining mate-pair FASTQ files.
     B
     Y
 
-##Installation
 
-    ./configure
-    make
-    make check
-    make install
 
 ## License
 

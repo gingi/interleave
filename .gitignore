@@ -1,0 +1,11 @@
+.deps
+Makefile
+autom4te.cache/
+stamp-h1
+config.*
+!config.h.in
+*.o
+*.la
+*.log
+*.trs
+*.tar.gz
